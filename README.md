@@ -1,6 +1,12 @@
 # 🤖 University FAQ Chatbot - AI-Powered Student Support
 
-![Chatbot Interface](screenshots/chat_interface.png)
+![Chatbot Interface](UI_images/User.png)
+
+📱 Screenshots
+Chat InterfaceAdmin Dashboard
+![Chatbot Interface](UI_images/User.png)
+![Chatbot Interface](UI_images/Admin-1.png)
+![Chatbot Interface](UI_images/Admin-2.png)
 
 ## 📋 Overview
 An intelligent FAQ chatbot system for university student support using TF-IDF vectorization and cosine similarity matching. The system provides accurate, transparent, and reliable responses with zero hallucinations.
@@ -86,9 +92,7 @@ Confidence Decision: Apply thresholds (0.30/0.10)
 
 Response Selection: Provide answer, suggestions, or fallback
 
-📱 Screenshots
-Chat Interface	Admin Dashboard
-![alt text](UI_images/User1.png)
+
 
 📝 API Endpoints
 GET / - Main chat interface
