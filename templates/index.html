@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ Chatbot</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Animate.css for animations -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    
+    <!-- Link to Custom Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    },
+                    colors: {
+                        'primary-blue': '#1070DD',
+                        'secondary-blue': '#0D5BB5',
+                        'accent-green': '#10B981',
+                        'warning-yellow': '#F59E0B',
+                        'error-red': '#EF4444',
+                        'light-gray': '#F9FAFB',
+                        'dark-gray': '#374151'
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in',
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'pulse-slow': 'pulse 2s infinite',
+                        'typing': 'typing 1.5s steps(20, end) infinite'
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        },
+                        typing: {
+                            '0%': { width: '0%' },
+                            '100%': { width: '100%' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gradient-to-br from-blue-50 to-gray-100 min-h-screen p-4">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-8 pt-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-3 animate__animated animate__fadeInDown">
+                FAQ CHATBOT BY ABDALLA ELSHEMALY AND MOHAMMAD KHAIRALLAH
+            </h1>
+            <div class="flex flex-wrap justify-center items-center gap-4 text-gray-600">
+                <div class="flex items-center gap-2">
+                    <span class="inline-block w-3 h-3 rounded-full bg-accent-green"></span>
+                    <span>AI-Powered Responses</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="inline-block w-3 h-3 rounded-full bg-primary-blue"></span>
+                    <span>Bilingual Support</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="inline-block w-3 h-3 rounded-full bg-warning-yellow"></span>
+                    <span>Smart Suggestions</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="learning-mode-status" class="px-3 py-1 rounded-full text-xs font-medium {% if learning_mode %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}" data-learning="{{ 'true' if learning_mode else 'false' }}">
+                        Learning Mode: {{ 'ON' if learning_mode else 'OFF' }}
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Chat Container -->
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Chat Window -->
+            <div class="lg:w-2/3">
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col h-[70vh]">
+                    <!-- Chat Header -->
+                    <div class="bg-gradient-to-r from-primary-blue to-secondary-blue text-white p-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="relative">
+                                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                                        <i class="fas fa-robot text-xl"></i>
+                                    </div>
+                                    <span class="absolute -bottom-1 -right-1 w-4 h-4 bg-accent-green rounded-full border-2 border-white"></span>
+                                </div>
+                                <div>
+                                    <h2 class="font-bold text-lg">Student FAQ Assistant</h2>
+                                    <p class="text-sm text-blue-100">Ask me about university services</p>
+                                </div>
+                            </div>
+                            <button onclick="toggleCategories()" class="p-2 hover:bg-white/20 rounded-lg transition">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Categories Bar (Initially hidden) -->
+                    <div id="categories-bar" class="hidden bg-gray-50 p-3 border-b">
+                        <div class="flex flex-wrap gap-2" id="category-tags">
+                            <!-- Categories will be loaded via JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Chat Messages Container -->
+                    <div id="chat-box" class="flex-grow chat-container p-4 space-y-4">
+                        <!-- Initial Bot Message -->
+                        <div class="flex justify-start animate__animated animate__fadeIn">
+                            <div class="bot-message max-w-xs md:max-w-md p-4 rounded-2xl rounded-tl-none shadow-lg">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-6 h-6 rounded-full bg-primary-blue/20 flex items-center justify-center">
+                                        <i class="fas fa-robot text-primary-blue text-xs"></i>
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-600">FAQ Bot</span>
+                                </div>
+                                <p class="text-gray-800">Hello! I'm your enhanced Student FAQ Assistant. I can help with:</p>
+                                <ul class="mt-2 text-sm text-gray-600 space-y-1">
+                                    <li><i class="fas fa-check text-accent-green mr-2"></i>Course Registration</li>
+                                    <li><i class="fas fa-check text-accent-green mr-2"></i>Technical Support</li>
+                                    <li><i class="fas fa-check text-accent-green mr-2"></i>Academic Questions</li>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Typing Indicator (Hidden by default) -->
+                    <div id="typing-indicator" class="hidden p-4 border-t border-gray-100 bg-gray-50">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-primary-blue/20 flex items-center justify-center">
+                                <i class="fas fa-robot text-primary-blue"></i>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <div class="typing-dot w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
+                                <div class="typing-dot w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-150"></div>
+                                <div class="typing-dot w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-300"></div>
+                            </div>
+                            <span class="text-sm text-gray-600">Thinking...</span>
+                        </div>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="p-4 border-t border-gray-200 bg-white">
+                        <div class="flex gap-3">
+                            <div class="flex-grow relative">
+                                <input 
+                                    type="text" 
+                                    id="user-input" 
+                                    placeholder="Type your question" 
+                                    class="w-full p-4 pl-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent transition"
+                                    onkeydown="if (event.key === 'Enter') sendMessage()"
+                                />
+                                <div class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+                                    <i class="fas fa-comment-dots"></i>
+                                </div>
+                                <div class="absolute right-4 top-1/2 transform -translate-y-1/2">
+                                    <button onclick="clearChat()" class="text-gray-400 hover:text-gray-600 transition" title="Clear chat">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button 
+                                onclick="sendMessage()" 
+                                id="send-button"
+                                class="bg-gradient-to-r from-primary-blue to-secondary-blue text-white p-4 rounded-xl hover:opacity-90 transition duration-300 shadow-lg flex items-center justify-center min-w-[60px]"
+                            >
+                                <i class="fas fa-paper-plane text-lg"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Quick Actions -->
+                        <div class="flex flex-wrap gap-2 mt-3">
+                            <button onclick="insertQuickQuestion('How do I register for courses?')" class="quick-action-btn">
+                                <i class="fas fa-book mr-1"></i> Course Registration
+                            </button>
+                            <button onclick="insertQuickQuestion('Where is the library?')" class="quick-action-btn">
+                                <i class="fas fa-building mr-1"></i> Campus Facilities
+                            </button>
+                            <button onclick="insertQuickQuestion('What are exam schedules?')" class="quick-action-btn">
+                                <i class="fas fa-calendar-alt mr-1"></i> Exam Schedule
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar with Info -->
+            <div class="lg:w-1/3">
+                <div class="space-y-6">
+                    <!-- Confidence & Info Panel -->
+                    <div class="bg-white rounded-2xl shadow-xl p-5 animate__animated animate__fadeInRight">
+                        <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="fas fa-chart-line text-primary-blue"></i>
+                            Response Analysis
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                    <span>Confidence Level</span>
+                                    <span id="confidence-score">-</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div id="confidence-bar" class="bg-gradient-to-r from-error-red via-warning-yellow to-accent-green h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-2">
+                                    <span id="confidence-text">No query yet</span>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="text-center p-3 bg-blue-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-primary-blue" id="total-questions">0</div>
+                                    <div class="text-xs text-gray-600">Total Questions</div>
+                                </div>
+                                <div class="text-center p-3 bg-green-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-accent-green" id="answered-questions">0</div>
+                                    <div class="text-xs text-gray-600">Answered</div>
+                                </div>
+                            </div>
+                            
+                            <div class="pt-4 border-t border-gray-100">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-medium text-gray-700">Question Category</span>
+                                    <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-800" id="question-category">-</span>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    <span id="category-info">Ask a question to see category</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Suggestions Panel -->
+                    <div class="bg-white rounded-2xl shadow-xl p-5 animate__animated animate__fadeInRight animate__delay-1s">
+                        <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="fas fa-lightbulb text-warning-yellow"></i>
+                            Smart Suggestions
+                        </h3>
+                        <div id="suggestions-container" class="space-y-2">
+                            <p class="text-gray-500 text-sm">No suggestions yet. Ask a question!</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Links -->
+                    <div class="bg-white rounded-2xl shadow-xl p-5 animate__animated animate__fadeInRight animate__delay-2s">
+                        <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="fas fa-bolt text-accent-green"></i>
+                            Quick Actions
+                        </h3>
+                        <div class="space-y-2">
+                            <a href="/admin" target="_blank" class="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition group">
+                                <div class="w-10 h-10 rounded-lg bg-primary-blue/10 flex items-center justify-center group-hover:bg-primary-blue/20 transition">
+                                    <i class="fas fa-chart-bar text-primary-blue"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-gray-800">Admin Dashboard</div>
+                                    <div class="text-xs text-gray-500">View analytics & logs</div>
+                                </div>
+                            </a>
+                            <button onclick="toggleLearningMode()" class="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition group">
+                                <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition">
+                                    <i class="fas fa-graduation-cap text-accent-green"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-gray-800">Toggle Learning Mode</div>
+                                    <div class="text-xs text-gray-500">Help me learn from questions</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="mt-8 text-center text-gray-500 text-sm">
+            <p>Enhanced FAQ Chatbot | AI-Powered University Assistant | Confidence-Based Decision Making</p>
+            <p class="mt-1">System avoids hallucinations • Fails gracefully • Continuously learning</p>
+        </footer>
+    </div>
+
+    <script>
+        // Session management
+        const sessionId = 'user-' + Math.random().toString(36).substring(2, 11);
+        let messageCount = 0;
+        
+        // DOM Elements
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const confidenceBar = document.getElementById('confidence-bar');
+        const confidenceScore = document.getElementById('confidence-score');
+        const confidenceText = document.getElementById('confidence-text');
+        const questionCategory = document.getElementById('question-category');
+        const categoryInfo = document.getElementById('category-info');
+        const suggestionsContainer = document.getElementById('suggestions-container');
+        const totalQuestions = document.getElementById('total-questions');
+        const answeredQuestions = document.getElementById('answered-questions');
+        const sendButton = document.getElementById('send-button');
+        const categoriesBar = document.getElementById('categories-bar');
+        const categoryTags = document.getElementById('category-tags');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCategories();
+            updateStats();
+            
+            // Set focus on input
+            userInput.focus();
+            
+            // Add animation to messages
+            observeChatMessages();
+        });
+
+        // Load categories from backend
+        async function loadCategories() {
+            try {
+                const response = await fetch('/get_categories');
+                const data = await response.json();
+                
+                if (data.categories && data.categories.length > 0) {
+                    categoryTags.innerHTML = '';
+                    data.categories.forEach(category => {
+                        const tag = document.createElement('button');
+                        tag.className = 'px-3 py-1 bg-blue-100 text-primary-blue rounded-full text-sm hover:bg-blue-200 transition';
+                        tag.textContent = category;
+                        tag.onclick = () => filterByCategory(category);
+                        categoryTags.appendChild(tag);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading categories:', error);
+            }
+        }
+
+        // Filter questions by category
+        async function filterByCategory(category) {
+            try {
+                const response = await fetch(`/questions_by_category/${category}`);
+                const data = await response.json();
+                
+                if (data.questions && data.questions.length > 0) {
+                    displayMessage('bot', `Here are questions about <strong>${category}</strong>:`);
+                    
+                    data.questions.slice(0, 5).forEach((q, index) => {
+                        setTimeout(() => {
+                            displayMessage('bot', `<strong>Q${index + 1}:</strong> ${q.Question}<br><em>${q.Answer.substring(0, 100)}...</em>`, true);
+                        }, index * 300);
+                    });
+                }
+            } catch (error) {
+                console.error('Error filtering by category:', error);
+            }
+        }
+
+        // Toggle categories bar
+        function toggleCategories() {
+            categoriesBar.classList.toggle('hidden');
+        }
+
+        // Clear chat
+        function clearChat() {
+            if (confirm('Clear all chat messages?')) {
+                chatBox.innerHTML = `
+                    <div class="flex justify-start animate__animated animate__fadeIn">
+                        <div class="bot-message max-w-xs md:max-w-md p-4 rounded-2xl rounded-tl-none shadow-lg">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="w-6 h-6 rounded-full bg-primary-blue/20 flex items-center justify-center">
+                                    <i class="fas fa-robot text-primary-blue text-xs"></i>
+                                </div>
+                                <span class="text-sm font-medium text-gray-600">FAQ Bot</span>
+                            </div>
+                            <p class="text-gray-800">Chat cleared! Ask me anything about university services.</p>
+                        </div>
+                    </div>
+                `;
+                messageCount = 0;
+                updateConfidenceUI(0, 'No query yet', 'General');
+                suggestionsContainer.innerHTML = '<p class="text-gray-500 text-sm">No suggestions yet. Ask a question!</p>';
+            }
+        }
+
+        // Insert quick question
+        function insertQuickQuestion(question) {
+            userInput.value = question;
+            userInput.focus();
+            
+            // Visual feedback
+            sendButton.classList.add('animate-pulse');
+            setTimeout(() => sendButton.classList.remove('animate-pulse'), 500);
+        }
+
+        // Toggle learning mode
+        async function toggleLearningMode() {
+            try {
+                const response = await fetch('/toggle_learning', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    const statusElement = document.getElementById('learning-mode-status');
+                    statusElement.textContent = `Learning Mode: ${data.learning_mode ? 'ON' : 'OFF'}`;
+                    statusElement.className = `px-3 py-1 rounded-full text-xs font-medium ${data.learning_mode ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`;
+                    
+                    // Show notification
+                    showNotification(data.message, data.learning_mode ? 'success' : 'info');
+                }
+            } catch (error) {
+                console.error('Error toggling learning mode:', error);
+                showNotification('Failed to toggle learning mode', 'error');
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-error-red',
+                info: 'bg-primary-blue',
+                warning: 'bg-warning-yellow'
+            };
+            
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg animate__animated animate__fadeInRight z-50`;
+            notification.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('animate__fadeOutRight');
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
+        }
+
+        // Update stats
+        async function updateStats() {
+            try {
+                const response = await fetch('/get_stats');
+                const data = await response.json();
+                
+                if (data.total_questions !== undefined) {
+                    totalQuestions.textContent = data.total_questions;
+                    answeredQuestions.textContent = data.answered_questions || 0;
+                }
+            } catch (error) {
+                console.error('Error updating stats:', error);
+            }
+        }
+
+        // Update confidence UI
+        function updateConfidenceUI(confidence, text, category) {
+            const percentage = Math.min(Math.max(confidence * 100, 0), 100);
+            
+            // Update bar
+            confidenceBar.style.width = `${percentage}%`;
+            
+            // Update score
+            confidenceScore.textContent = confidence > 0 ? `${(confidence * 100).toFixed(1)}%` : '-';
+            
+            // Update text
+            confidenceText.textContent = text;
+            
+            // Update category
+            questionCategory.textContent = category;
+            
+            // Update category info
+            const categoryDescriptions = {
+                'Registration': 'Questions about course enrollment and registration',
+                'Technical': 'Technical support and IT-related queries',
+                'Academic': 'Academic matters, exams, and transcripts',
+                'Facilities': 'Campus buildings, libraries, and facilities',
+                'Support': 'General help and support requests',
+                'Financial': 'Scholarships, fees, and financial aid',
+                'Student_life': 'Clubs, events, and student activities',
+                'General': 'General university information'
+            };
+            
+            categoryInfo.textContent = categoryDescriptions[category] || 'General university query';
+        }
+
+        // Display message with animation
+        function displayMessage(sender, text, isHTML = false) {
+            messageCount++;
+            
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} animate__animated animate__fadeIn`;
+            
+            const messageBubble = document.createElement('div');
+            
+            if (sender === 'user') {
+                messageBubble.className = 'user-message max-w-xs md:max-w-md p-4 rounded-2xl rounded-br-none shadow-lg';
+            } else {
+                messageBubble.className = 'bot-message max-w-xs md:max-w-md p-4 rounded-2xl rounded-tl-none shadow-lg';
+                
+                // Add bot icon for first message in sequence
+                if (messageCount === 1 || document.querySelectorAll('.bot-message').length % 3 === 0) {
+                    const botIcon = document.createElement('div');
+                    botIcon.className = 'flex items-center gap-2 mb-2';
+                    botIcon.innerHTML = `
+                        <div class="w-6 h-6 rounded-full bg-primary-blue/20 flex items-center justify-center">
+                            <i class="fas fa-robot text-primary-blue text-xs"></i>
+                        </div>
+                        <span class="text-sm font-medium text-gray-600">FAQ Bot</span>
+                    `;
+                    messageBubble.prepend(botIcon);
+                }
+            }
+            
+            if (isHTML) {
+                messageBubble.innerHTML = text;
+            } else {
+                messageBubble.textContent = text;
+            }
+            
+            messageWrapper.appendChild(messageBubble);
+            chatBox.appendChild(messageWrapper);
+            scrollToBottom();
+            
+            // Add animation
+            messageWrapper.classList.add('animate__animated', 'animate__fadeInUp');
+        }
+
+        // Show typing indicator
+        function showTypingIndicator() {
+            typingIndicator.classList.remove('hidden');
+            typingIndicator.classList.add('animate__animated', 'animate__fadeIn');
+            scrollToBottom();
+        }
+
+        // Hide typing indicator
+        function hideTypingIndicator() {
+            typingIndicator.classList.add('animate__fadeOut');
+            setTimeout(() => {
+                typingIndicator.classList.add('hidden');
+                typingIndicator.classList.remove('animate__fadeOut', 'animate__fadeIn');
+            }, 300);
+        }
+
+        // Scroll to bottom
+        function scrollToBottom() {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Observe chat messages for animations
+        function observeChatMessages() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('animate__animated', 'animate__fadeIn');
+                    }
+                });
+            }, { threshold: 0.1 });
+            
+            document.querySelectorAll('.bot-message, .user-message').forEach(msg => {
+                observer.observe(msg);
+            });
+        }
+
+        // Send message to backend
+        async function sendMessage() {
+            const query = userInput.value.trim();
+            if (query === '') return;
+            
+            // 1. Display user message
+            displayMessage('user', query);
+            userInput.value = '';
+            
+            // 2. Show typing indicator
+            showTypingIndicator();
+            
+            // 3. Disable send button temporarily
+            sendButton.disabled = true;
+            sendButton.classList.add('opacity-50');
+            
+            try {
+                // 4. Send query to Flask backend
+                const response = await fetch('/get_response', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // 5. Hide typing indicator
+                hideTypingIndicator();
+                
+                // 6. Display bot response
+                setTimeout(() => {
+                    displayMessage('bot', data.response);
+                    
+                    // 7. Update confidence UI
+                    updateConfidenceUI(
+                        data.confidence,
+                        getConfidenceText(data.confidence),
+                        data.category
+                    );
+                    
+                    // 8. Update suggestions
+                    updateSuggestions(data.suggestions, data.confidence);
+                    
+                    // 9. Update stats
+                    updateStats();
+                    
+                    // 10. Re-enable send button
+                    sendButton.disabled = false;
+                    sendButton.classList.remove('opacity-50');
+                }, 500);
+                
+            } catch (error) {
+                console.error('Error fetching response:', error);
+                
+                hideTypingIndicator();
+                displayMessage('bot', 'Oops! There was an error processing your request. Please try again.');
+                
+                // Re-enable send button
+                sendButton.disabled = false;
+                sendButton.classList.remove('opacity-50');
+            }
+        }
+
+        // Get confidence description
+        function getConfidenceText(confidence) {
+            if (confidence >= 0.7) return 'High confidence - Exact match found';
+            if (confidence >= 0.4) return 'Medium confidence - Close match';
+            if (confidence >= 0.2) return 'Low confidence - Partial match';
+            if (confidence > 0) return 'Very low confidence - Using fallback';
+            return 'No match found';
+        }
+
+        // Update suggestions panel
+        function updateSuggestions(suggestions, confidence) {
+            if (suggestions && suggestions.length > 0 && confidence < 0.3) {
+                suggestionsContainer.innerHTML = `
+                    <div class="space-y-3">
+                        <p class="text-sm text-gray-700 font-medium">Did you mean one of these?</p>
+                        ${suggestions.map((suggestion, index) => `
+                            <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                <div class="flex items-start gap-2">
+                                    <span class="text-xs bg-white text-primary-blue font-bold px-2 py-1 rounded">${index + 1}</span>
+                                    <span class="text-sm text-gray-800">${suggestion.question}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (confidence >= 0.3) {
+                suggestionsContainer.innerHTML = `
+                    <div class="p-3 bg-green-50 rounded-lg border border-green-100">
+                        <div class="flex items-center gap-2 text-green-800">
+                            <i class="fas fa-check-circle"></i>
+                            <span class="text-sm">Good match found! No suggestions needed.</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                suggestionsContainer.innerHTML = `
+                    <p class="text-gray-500 text-sm">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Ask a question to get smart suggestions
+                    </p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

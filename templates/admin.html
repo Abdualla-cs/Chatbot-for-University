@@ -1,0 +1,452 @@
+  <!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Admin Dashboard - Chatbot Analytics</title>
+      <script src="https://cdn.tailwindcss.com"></script>
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+      <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}" />
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+      <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-800">Chatbot Admin Dashboard</h1>
+            <p class="text-gray-600">Real-time analytics & system monitoring</p>
+          </div>
+          <div class="flex gap-3">
+            <a href="/" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"><i class="fas fa-comments mr-2"></i>Back to Chat</a>
+            <button onclick="refreshData()" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"><i class="fas fa-sync-alt mr-2"></i>Refresh</button>
+          </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <!-- Card 1: Total Questions -->
+          <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">Total Questions</p>
+                <p class="text-3xl font-bold text-gray-800">{{ analytics.get('total_questions', 0) }}</p>
+              </div>
+              <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-question-circle text-blue-600 text-xl"></i>
+              </div>
+            </div>
+            <div class="mt-4">
+              <div class="flex justify-between text-sm">
+                <span class="text-green-600">
+                  <i class="fas fa-arrow-up mr-1"></i>
+                  {% if analytics.get('total_questions', 0) > 0 %}
+                    {{ (analytics.get('answered_questions', 0) / analytics.get('total_questions', 1) * 100)|round|int }}%
+                  {% else %}
+                    0%
+                  {% endif %}
+                </span>
+                <span>Answered Rate</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Answered -->
+          <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">Answered</p>
+                <p class="text-3xl font-bold text-gray-800">{{ analytics.get('answered_questions', 0) }}</p>
+              </div>
+              <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-check-circle text-green-600 text-xl"></i>
+              </div>
+            </div>
+            <div class="mt-4">
+              <div class="flex justify-between text-sm">
+                <span>Success Rate</span>
+                <span class="font-bold">
+                  {% if analytics.get('total_questions', 0) > 0 %}
+                    {{ (analytics.get('answered_questions', 0) / analytics.get('total_questions', 1) * 100)|round|int }}%
+                  {% else %}
+                    0%
+                  {% endif %}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Fallback Responses -->
+          <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">Fallback Responses</p>
+                <p class="text-3xl font-bold text-gray-800">{{ analytics.get('fallback_count', 0) }}</p>
+              </div>
+              <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-exclamation-triangle text-yellow-600 text-xl"></i>
+              </div>
+            </div>
+            <div class="mt-4">
+              <div class="flex justify-between text-sm">
+                <span>Learning Opportunities</span>
+                <span class="font-bold">{{ analytics.get('unknown_count', 0) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: Avg Confidence -->
+          <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">Avg Confidence</p>
+                <p class="text-3xl font-bold text-gray-800">
+                  {% if analytics.get('avg_confidence') %}
+                    {{ '%.2f'|format(analytics.get('avg_confidence', 0)) }}
+                  {% else %}
+                    0.00
+                  {% endif %}
+                </p>
+              </div>
+              <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-chart-line text-purple-600 text-xl"></i>
+              </div>
+            </div>
+            <div class="mt-4">
+              <div class="flex justify-between text-sm">
+                <span>System Accuracy</span>
+                <span class="font-bold">
+                  {% set avg_conf = analytics.get('avg_confidence', 0) %}
+                  {% if avg_conf > 0.6 %}
+                    High
+                  {% elif avg_conf > 0.3 %}
+                    Medium
+                  {% else %}
+                    Low
+                  {% endif %}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+          <!-- Category Distribution -->
+          <div class="bg-white rounded-xl shadow-lg p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">📊 Question Categories</h3>
+            <canvas id="categoryChart" height="250"></canvas>
+          </div>
+        </div>
+
+        <!-- Recent Chats & Unknown Questions -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <!-- Recent Chats -->
+          <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-bold text-gray-800">💬 Recent Conversations</h3>
+              <span class="text-sm text-gray-500">Last 20 interactions</span>
+            </div>
+            <div class="space-y-3 max-h-96 overflow-y-auto">
+              {% if recent_chats and recent_chats|length > 0 %}
+                {% for chat in recent_chats %}
+                  <div class="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                    <div class="flex justify-between items-start mb-2">
+                      <span class="text-sm font-medium text-gray-700">{{ chat.get('user_query', '')[:60] }}{% if chat.get('user_query', '')|length > 60 %}...{% endif %}</span>
+                      <span class="text-xs px-2 py-1 rounded-full {% if chat.get('response_type') == 'Answered' %}
+                          bg-green-100 text-green-800
+                        {% else %}
+                          bg-yellow-100 text-yellow-800
+                        {% endif %}">
+                        {{ chat.get('response_type', 'Unknown') }}
+                      </span>
+                    </div>
+                    <div class="text-sm text-gray-600 mb-1">
+                      {{ chat.get('bot_response', '')[:80] }}{% if chat.get('bot_response', '')|length > 80 %}...{% endif %}
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500">
+                      <span><i class="fas fa-clock mr-1"></i>{{ chat.get('timestamp', 'Unknown') }}</span>
+                      <span>Confidence: {{ '%.1f'|format(chat.get('confidence', 0) * 100) }}%</span>
+                    </div>
+                  </div>
+                {% endfor %}
+              {% else %}
+                <div class="text-center py-8 text-gray-500">
+                  <i class="fas fa-comments text-3xl mb-3"></i>
+                  <p>No conversation data yet</p>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Unknown Questions -->
+          <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-bold text-gray-800">📝 Unknown Questions</h3>
+              <span class="text-sm px-3 py-1 rounded-full {% if learning_mode %}
+                  bg-green-100 text-green-800
+                {% else %}
+                  bg-gray-100 text-gray-800
+                {% endif %}">
+                Learning Mode:{% if learning_mode %}
+                  ON
+                {% else %}
+                  OFF
+                {% endif %}
+              </span>
+            </div>
+
+            {% if learning_mode %}
+              {% if unknown_questions and unknown_questions|length > 0 %}
+                <div class="space-y-3 max-h-96 overflow-y-auto">
+                  {% for question in unknown_questions %}
+                    <div class="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                      <div class="flex justify-between items-start mb-2">
+                        <span class="text-sm font-medium text-gray-700">{{ question.get('question', '')[:60] }}{% if question.get('question', '')|length > 60 %}...{% endif %}</span>
+                        <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">{{ question.get('language', 'Unknown') }}</span>
+                      </div>
+                      <div class="text-xs text-gray-500 mb-2">
+                        <i class="fas fa-clock mr-1"></i>{{ question.get('timestamp', 'Unknown') }}
+                      </div>
+                      <div class="flex gap-2">
+                        <button onclick="addToFAQ(this)" data-question="{{ question.get('question', '') }}" class="add-to-faq-btn text-xs px-3 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200 transition"><i class="fas fa-plus mr-1"></i>Add to FAQ</button>
+                        <button onclick="ignoreQuestion(this)" data-timestamp="{{ question.get('timestamp', '') }}" class="ignore-btn text-xs px-3 py-1 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 transition"><i class="fas fa-times mr-1"></i>Ignore</button>
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="text-center py-8 text-gray-500">
+                  <i class="fas fa-check-circle text-3xl mb-3 text-green-500"></i>
+                  <p>No unknown questions yet!</p>
+                  <p class="text-sm mt-1">All questions have been answered</p>
+                </div>
+              {% endif %}
+            {% else %}
+              <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-graduation-cap text-3xl mb-3 text-blue-500"></i>
+                <p class="font-medium mb-2">Learning Mode is Disabled</p>
+                <p class="text-sm mb-4">Enable learning mode to collect unknown questions for improvement</p>
+                <button onclick="toggleLearningMode()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"><i class="fas fa-toggle-on mr-2"></i>Enable Learning Mode</button>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- System Information -->
+        <div class="mt-8 bg-white rounded-xl shadow-lg p-6">
+          <h3 class="text-lg font-bold text-gray-800 mb-4">⚙️ System Information</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="p-4 bg-gray-50 rounded-lg">
+              <div class="flex items-center gap-3 mb-2">
+                <i class="fas fa-brain text-purple-600"></i>
+                <span class="font-medium">AI Model</span>
+              </div>
+              <p class="text-sm text-gray-600">TF-IDF with Cosine Similarity</p>
+            </div>
+            <div class="p-4 bg-gray-50 rounded-lg">
+              <div class="flex items-center gap-3 mb-2">
+                <i class="fas fa-language text-blue-600"></i>
+                <span class="font-medium">Languages</span>
+              </div>
+              <p class="text-sm text-gray-600">English Support</p>
+            </div>
+            <div class="p-4 bg-gray-50 rounded-lg">
+              <div class="flex items-center gap-3 mb-2">
+                <i class="fas fa-database text-green-600"></i>
+                <span class="font-medium">Knowledge Base</span>
+              </div>
+              <p class="text-sm text-gray-600">{{ analytics.get('total_questions', 0) }} FAQ entries</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-8 text-center text-gray-500 text-sm">
+          <p>Enhanced FAQ Chatbot Admin Dashboard | Confidence-Based Decision Making | System avoids hallucinations</p>
+          <p class="mt-1" id="current-time">Loading time...</p>
+        </div>
+      </div>
+
+      <script>
+          // Update current time
+          function updateCurrentTime() {
+              const now = new Date();
+              const timeString = now.toLocaleString('en-US', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false
+              }).replace(',', '');
+              document.getElementById('current-time').textContent = 'Last updated: ' + timeString;
+          }
+          
+          // Initialize charts
+          function initializeCharts() {
+              try {
+                  // Language Chart
+                  const langCtx = document.getElementById('languageChart');
+                  if (langCtx) {
+                      const englishCount = {{ analytics.get('english_questions', 0)|safe }};
+                      const arabicCount = {{ analytics.get('arabic_questions', 0)|safe }};
+                      
+                      new Chart(langCtx.getContext('2d'), {
+                          type: 'doughnut',
+                          data: {
+                              labels: ['English', 'Arabic'],
+                              datasets: [{
+                                  data: [englishCount, arabicCount],
+                                  backgroundColor: ['#1070DD', '#10B981'],
+                                  borderWidth: 2,
+                                  borderColor: '#ffffff'
+                              }]
+                          },
+                          options: {
+                              responsive: true,
+                              plugins: {
+                                  legend: {
+                                      position: 'bottom'
+                                  }
+                              }
+                          }
+                      });
+                  }
+
+                  // Category Chart
+                  const catCtx = document.getElementById('categoryChart');
+                  if (catCtx) {
+                      // Safely parse categories
+                      let categories = {};
+                      try {
+                          const catData = {{ analytics.get('top_categories', {})|tojson|safe }};
+                          categories = catData || {};
+                      } catch (e) {
+                          categories = {};
+                      }
+                      
+                      const catLabels = Object.keys(categories);
+                      const catData = Object.values(categories);
+                      
+                      if (catLabels.length > 0) {
+                          new Chart(catCtx.getContext('2d'), {
+                              type: 'bar',
+                              data: {
+                                  labels: catLabels,
+                                  datasets: [{
+                                      label: 'Questions',
+                                      data: catData,
+                                      backgroundColor: [
+                                          '#1070DD', '#10B981', '#F59E0B', 
+                                          '#EF4444', '#8B5CF6', '#EC4899'
+                                      ],
+                                      borderWidth: 1,
+                                      borderColor: '#ffffff'
+                                  }]
+                              },
+                              options: {
+                                  responsive: true,
+                                  plugins: {
+                                      legend: {
+                                          display: false
+                                      }
+                                  },
+                                  scales: {
+                                      y: {
+                                          beginAtZero: true,
+                                          ticks: {
+                                              stepSize: 1
+                                          }
+                                      }
+                                  }
+                              }
+                          });
+                      } else {
+                          catCtx.parentElement.innerHTML = `
+                              <div class="text-center py-12 text-gray-500">
+                                  <i class="fas fa-chart-bar text-3xl mb-3"></i>
+                                  <p>No category data available yet</p>
+                                  <p class="text-sm mt-1">Ask more questions to see category distribution</p>
+                              </div>
+                          `;
+                      }
+                  }
+              } catch (error) {
+                  console.error('Chart initialization error:', error);
+              }
+          }
+
+          // Toggle learning mode
+          async function toggleLearningMode() {
+              try {
+                  const response = await fetch('/toggle_learning', {
+                      method: 'POST',
+                      headers: {
+                          'Content-Type': 'application/json'
+                      }
+                  });
+                  
+                  if (response.ok) {
+                      const data = await response.json();
+                      if (data.success) {
+                          alert(`Learning mode ${data.learning_mode ? 'enabled' : 'disabled'}`);
+                          location.reload();
+                      }
+                  } else {
+                      alert('Failed to toggle learning mode');
+                  }
+              } catch (error) {
+                  console.error('Error toggling learning mode:', error);
+                  alert('Failed to toggle learning mode');
+              }
+          }
+
+          // Add question to FAQ
+          function addToFAQ(button) {
+              const question = button.getAttribute('data-question') || 'Unknown question';
+              if (confirm(`Add this question to FAQ?\n\n"${question}"`)) {
+                  alert('Question added to review list (Backend integration pending)');
+                  console.log('Adding question to FAQ:', question);
+                  // In real implementation: button.closest('.p-3').remove();
+              }
+          }
+
+          // Ignore question
+          function ignoreQuestion(button) {
+              const timestamp = button.getAttribute('data-timestamp') || '';
+              if (confirm('Ignore this question?')) {
+                  alert('Question ignored (Backend integration pending)');
+                  console.log('Ignoring question with timestamp:', timestamp);
+                  // In real implementation: button.closest('.p-3').remove();
+              }
+          }
+
+          // Refresh data
+          function refreshData() {
+              location.reload();
+          }
+
+          // Initialize on load
+          document.addEventListener('DOMContentLoaded', function() {
+              updateCurrentTime();
+              initializeCharts();
+              
+              // Update time every minute
+              setInterval(updateCurrentTime, 60000);
+              
+              // Add event listeners to buttons
+              document.querySelectorAll('.add-to-faq-btn').forEach(btn => {
+                  btn.addEventListener('click', function() {
+                      addToFAQ(this);
+                  });
+              });
+              
+              document.querySelectorAll('.ignore-btn').forEach(btn => {
+                  btn.addEventListener('click', function() {
+                      ignoreQuestion(this);
+                  });
+              });
+          });
+      </script>
+    </body>
+  </html>
